@@ -4,6 +4,10 @@ use std::{
     thread,
 };
 
+mod router;
+
+pub use router::Router;
+
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
 struct Worker {
@@ -21,9 +25,7 @@ impl ThreadPool {
     ///
     /// The size is the number of threads in the pool.
     ///
-    /// # Panics
-    ///
-    /// The `new` function will panic if the size is zero.
+    /// The `new` function will exit if size is 0
     pub fn new(size: usize) -> Self {
         if size < 1 {
             eprintln!("Invalid number of threads specified");
@@ -32,11 +34,9 @@ impl ThreadPool {
         }
 
         let (sender, receiver) = mpsc::channel();
-
         let receiver = Arc::new(Mutex::new(receiver));
 
         let mut workers = Vec::with_capacity(size);
-
         for id in 0..size {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
@@ -53,7 +53,9 @@ impl ThreadPool {
     {
         let job = Box::new(f);
 
-        self.sender.as_ref().unwrap().send(job).unwrap();
+        if let Some(sender) = &self.sender {
+            sender.send(job).expect("Couldn't send a job");
+        }
     }
 }
 
