@@ -85,3 +85,51 @@ impl Drop for Router {
         self.request_line = None;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::router::Router;
+
+    #[test]
+    fn prepared_response_ok() {
+        let filename = "file";
+        let (code, file) = Router::prepare_response(Response::Ok(filename));
+
+        assert_eq!(filename, file);
+        assert!(code.contains("200 OK"));
+    }
+
+    #[test]
+    fn prepared_response_not_found() {
+        let (code, file) = Router::prepare_response(Response::NotFound);
+
+        assert_eq!(file, "error.html");
+        assert!(code.contains("404 NOT FOUND"));
+    }
+
+    #[test]
+    fn prepared_response_bad_request() {
+        let (code, file) = Router::prepare_response(Response::BadRequest);
+
+        assert_eq!(file, "error.html");
+        assert!(code.contains("400 BAD REQUEST"));
+    }
+
+    #[test]
+    fn get_router_error() {
+        let request_line: Option<String> = None;
+        let route = Router::get_route(&request_line);
+
+        assert_eq!(route.as_str(), ERROR_ROUTE);
+    }
+
+    #[test]
+    fn get_router_ok() {
+        let http_response = "GET / HTTP/1.1";
+        let request_line = Some(String::from(http_response));
+        let route = Router::get_route(&request_line);
+
+        assert_eq!(route.as_str(), "/");
+    }
+}
